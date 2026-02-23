@@ -1,0 +1,7 @@
+# Node / project ignores
+node_modules/
+/.env
+
+# Environment files
+.env.production
+docs/services-healthy.png
