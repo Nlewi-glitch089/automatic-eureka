@@ -1,32 +1,94 @@
-# automatic-eureka
+## Architecture
 
-**Architecture**
-- **Two containers:** an `app` (Node.js) service and a `db` (Postgres) service managed by Docker Compose.
-- **Communication:** both services run on the same Docker network; the `app` connects to the database using the `db` hostname and credentials provided via environment variables. The `app` depends on the `db` being healthy before starting (`depends_on` with `condition: service_healthy`).
+This project runs as two containers managed by Docker Compose:
 
-**Quick Start**
-- Start everything with a single command: `docker compose up` (or run detached: `docker compose up -d`).
-- View logs: `docker compose logs -f`
-- Stop and remove: `docker compose down`
+- **app** — Node.js service (the application)
+- **db** — PostgreSQL database
 
-**Stability Features**
-- **Healthchecks:** the `db` uses `pg_isready` and the `app` uses a `wget`-based HTTP probe to verify `http://localhost:3000` is responding. Healthchecks let Compose and orchestrators know when a service is operational.
-- **Restart policies:** both services are configured with `restart: always` so Docker will automatically restart a failed container to minimize downtime.
+Both services share a Docker network so the `app` can connect to the database using the hostname `db`. Credentials and configuration are provided via environment variables.
 
-**Environment Management**
-- Secrets and runtime configuration are handled with environment files. The `app` loads variables from `.env.production` via the `env_file` directive in `docker-compose.yml`.
-- Keep secrets out of source control: add `.env.production` to `.gitignore` and use a secret manager for production deployments.
+Example Compose snippet (startup ordering):
 
-**Business Value**
-- For BrightPath (educational apps), uptime and reliability are critical to avoid disrupting learners and instructors. Healthchecks and automatic restarts reduce manual intervention, improve availability during transient failures, and make the platform more trustworthy for classrooms.
+```yaml
+depends_on:
+  db:
+    condition: service_healthy
+```
 
-**Screenshot (both services healthy)**
+## Quick Start
+
+Start the full stack with a single command:
+
+```bash
+docker compose up
+```
+
+Run detached:
+
+```bash
+docker compose up -d
+```
+
+View logs:
+
+```bash
+docker compose logs -f
+```
+
+Stop and remove containers:
+
+```bash
+docker compose down
+```
+
+## Stability Features
+
+### Healthchecks
+
+Each service includes a healthcheck so the orchestrator can tell if it is actually functional (not just running).
+
+- **db:** `pg_isready` to verify Postgres is accepting connections.
+- **app:** `wget` HTTP probe against `http://localhost:3000`.
+
+Healthchecks enable smarter startup ordering, visible service state (`healthy` / `unhealthy`), and better automation.
+
+### Restart Policies
+
+Both services use a restart policy to automatically recover from crashes:
+
+```yaml
+restart: always
+```
+
+This reduces downtime and manual intervention for transient failures.
+
+## Environment Management
+
+Runtime configuration is loaded from environment files. The `app` uses:
+
+```yaml
+env_file:
+  - .env.production
+```
+
+Important: never commit secrets. Add `.env.production` to `.gitignore` and use a secret manager in production.
+
+## Business Value
+
+For educational platforms (e.g., BrightPath), reliability matters: students and instructors depend on predictable availability. Healthchecks and restart policies reduce disruptions, lower operational overhead, and build trust in the platform.
+
+## Screenshot (Both Services Healthy)
+
 ![services healthy](docs/services-healthy.png)
 
-How to reproduce the screenshot locally:
-1. `docker compose up -d`
-2. `docker compose ps` — verify both services have `healthy` under the `State` column
-3. Take a screenshot of the terminal or the Docker Desktop view and replace `docs/services-healthy.png` with your image.
+To reproduce locally:
 
-**Why orchestration matters**
-- Orchestration gives you lifecycle control (start order, health checks), automatic recovery (restart policies), and consistent networking — all of which make delivery and operation of educational services predictable and resilient.
+```bash
+docker compose up -d
+docker compose ps
+# Confirm both services show "healthy" in the State column
+```
+
+## Why Orchestration Matters
+
+Orchestration (Compose, etc.) provides controlled startup order, health awareness, automatic recovery, and consistent networking — making deployments predictable and resilient.
